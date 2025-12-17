@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Email Template Generator</title>
+
+<style>
+body { font-family: Arial; padding: 20px; }
+input, select, button, textarea {
+  padding: 8px;
+  margin: 6px 0;
+  width: 100%;
+}
+textarea {
+  font-family: monospace;
+  height: 420px;
+}
+button {
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Email Template AI</h2>
+
+<input id="company" placeholder="Company Name" required>
+<input id="company_url" placeholder="Company Website (optional)">
+<input id="industry" placeholder="Industry (optional)">
+
+<select id="department" onchange="toggleOther()">
+  <option value="">Select Department</option>
+  <option>IT</option>
+  <option>HR</option>
+  <option>Finance</option>
+  <option>Operations</option>
+  <option>Other</option>
+</select>
+
+<input id="otherDept" placeholder="Enter department" style="display:none;">
+
+<input id="subject" placeholder="Subject (optional)">
+
+<button onclick="generate()">Generate</button>
+<button onclick="download()">Download HTML</button>
+
+<h3>Raw HTML Output</h3>
+<textarea id="rawHtml" readonly></textarea>
+
+<script>
+let lastHTML = "";
+
+const companyEl = document.getElementById("company");
+const companyUrlEl = document.getElementById("company_url");
+const industryEl = document.getElementById("industry");
+const departmentEl = document.getElementById("department");
+const otherDeptEl = document.getElementById("otherDept");
+const subjectEl = document.getElementById("subject");
+const rawHtmlEl = document.getElementById("rawHtml");
+
+function toggleOther() {
+  otherDeptEl.style.display =
+    departmentEl.value === "Other" ? "block" : "none";
+}
+
+async function generate() {
+  const company = companyEl.value.trim();
+  const department =
+    departmentEl.value === "Other"
+      ? otherDeptEl.value.trim()
+      : departmentEl.value;
+
+  if (!company) {
+    alert("Company name is required.");
+    return;
+  }
+
+  if (!department) {
+    alert("Department is required.");
+    return;
+  }
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/generate-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        company: company,
+        company_url: companyUrlEl.value.trim(),
+        industry: industryEl.value.trim(),
+        department: department,
+        subject: subjectEl.value.trim()
+      })
+    });
+
+    if (!res.ok) {
+      alert("Backend error. Ensure FastAPI is running.");
+      return;
+    }
+
+    const data = await res.json();
+    lastHTML = data.html || "";
+    rawHtmlEl.value = lastHTML;
+
+  } catch (err) {
+    alert("Cannot connect to backend. Run: uvicorn main:app --reload");
+  }
+}
+
+function download() {
+  if (!lastHTML) {
+    alert("Generate the email first.");
+    return;
+  }
+
+  const blob = new Blob([lastHTML], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "email_template.html";
+  a.click();
+}
+</script>
+
+</body>
+</html>
